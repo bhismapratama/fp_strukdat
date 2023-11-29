@@ -6,7 +6,7 @@ Untuk mengakses soal, silakan klik **[di sini](https://github.com/mocatfrio/data
 
 - [Bhisma Elki Pratama](https://github.com/bhismapratama)
 - [Siti Nur Ellyzah](https://github.com/ellyzah)
-- [Muhammad Zidan Hadipratama](https://github.com/bintangryan)
+- [Muhammad Zidan Hadipratama](https://github.com/ZidanHadipratama)
 
 # Final Project Struktur Data dan Pemrograman Berbasis Object
 
