@@ -1,261 +1,416 @@
 #include <iostream>
 #include <string>
+#include <vector>
+#include <cstdlib>
+#include <ctime>
 
 using namespace std;
 
-const int MAX_ADMINS = 3;  // kasih batas maksimal admin
-const int MAX_USERS = 100; // kasih batas maksimal user
-
-// definisi class
-class Display
+class PembuatToken
 {
 public:
-    virtual ~Display() = default;
-    virtual void notification() const = 0;
-};
-
-// definisi class user
-class User : public Display
-{
-protected:
-    string username;
-    string password;
-
-public:
-    User(const string &username, const string &password) : username(username), password(password) {}
-
-    void notification() const override
+    double hasilkanToken()
     {
-        cout << "User: " << username << endl;
+        return rand();
     }
 };
 
-// definisi class admin
-class Admin : public User
+class Tampilan
 {
 public:
-    Admin(const string &username, const string &password) : User(username, password) {}
+    Tampilan() {}
 
-    void notification() const override
+    virtual ~Tampilan() {}
+
+    virtual void notifikasi() = 0;
+    void tampilkanToken(double token)
     {
-        cout << "Admin: " << username << endl;
+        cout << "token dihasilkan: " << token << endl;
     }
 };
 
-// definisi class dashboard
-class Dashboard
+class Pengguna : public Tampilan
 {
 private:
-    User **users;                      // array dinamis simpan User dan Admin
-    int userCount;                     // jumah user yang ditambah
-    string *userActivities[MAX_USERS]; // array dinamis simpan kegiatan user
+    PembuatToken pembuatToken;
+    vector<Pengguna *> teman;
 
 public:
-    Dashboard() : users(new User *[MAX_ADMINS]), userCount(0)
+    Pengguna() {}
+
+    ~Pengguna() {}
+
+    void pembuatanToken()
     {
-        for (int i = 0; i < MAX_USERS; ++i)
+        token = pembuatToken.hasilkanToken();
+    }
+
+    void daftarPengguna(const string &namaPengguna, const string &kataSandi)
+    {
+        this->namaPengguna = namaPengguna;
+        this->kataSandi = kataSandi;
+        pembuatanToken();
+        cout << "Nama Pengguna: " << this->namaPengguna << endl;
+        cout << "Kata Sandi: " << this->kataSandi << endl;
+        tampilkanToken(token);
+    }
+
+    void tambahTeman(Pengguna *temanPengguna)
+    {
+        teman.push_back(temanPengguna);
+    }
+
+    void tampilkanTeman() const
+    {
+        cout << "Teman dari " << getNamaPengguna() << ": " ;
+        for (int i = 0; i < teman.size(); ++i)
         {
-            userActivities[i] = nullptr;
+            cout << teman[i]->getNamaPengguna() << endl;
         }
     }
 
-    ~Dashboard()
+    void notifikasi() override
     {
-        // dealokasi user
-        for (int i = 0; i < userCount; ++i)
-        {
-            delete users[i];
-        }
-        delete[] users;
-
-        // dealokasi activity
-        for (int i = 0; i < MAX_USERS; ++i)
-        {
-            delete userActivities[i];
-        }
+        cout << "pengguna dibuat oleh Pengguna" << endl;
+        tampilkanToken(token);
     }
 
-    bool isAdminLimitReached() const
+    string getNamaPengguna() const
     {
-        return userCount >= MAX_ADMINS;
+        return namaPengguna;
     }
 
-    void addUser(User *user)
+    string getKataSandi() const
     {
-        if (userCount < MAX_ADMINS + MAX_USERS)
-        {
-            users[userCount++] = user;
-        }
-        else
-        {
-            cout << "dah penuh" << endl;
-            delete user;// hapus user yang tidak ditambah di array
-        }
+        return kataSandi;
     }
 
-    void displayUsers() const
+    double getToken() const
     {
-        cout << "=== Users ===" << endl;
-        for (int i = 0; i < userCount; ++i)
-        {
-            users[i]->notification();
-        }
-        cout << "=============" << endl;
+        return token;
     }
 
-    void addActivity(const string &username, const string &activity)
+    const vector<Pengguna *> &getTeman() const
     {
-        for (int i = 0; i < MAX_USERS; ++i)
+        return teman;
+    }
+
+protected:
+    string namaPengguna;
+    string kataSandi;
+    double token;
+};
+
+class Admin : public Pengguna
+{
+private:
+    bool terotentikasi;
+
+public:
+    Admin() : terotentikasi(false) {}
+
+    ~Admin() {}
+
+    void autentikasi()
+    {
+        terotentikasi = true;
+    }
+
+    bool sudahAutentikasi() const
+    {
+        return terotentikasi;
+    }
+
+    void notifikasi() override
+    {
+        cout << "pengguna dibuat oleh Admin" << endl;
+        tampilkanToken(getToken());
+    }
+};
+
+class ManajerHubungan
+{
+private:
+    vector<Pengguna *> pengguna;
+
+public:
+    void tambahPengguna(Pengguna *penggunaBaru)
+    {
+        pengguna.push_back(penggunaBaru);
+    }
+
+    void tampilkanHubungan() const
+    {
+        cout << "Hubungan:" << endl;
+
+        for (int i = 0; i < pengguna.size(); ++i)
         {
-            if (userActivities[i] == nullptr)
+            const vector<Pengguna *> &teman = pengguna[i]->getTeman();
+            for (int j = 0; j < teman.size(); ++j)
             {
-                userActivities[i] = new string(activity);
-                cout << "kegiatan ditambahkan" << endl;
-                return;
+                cout << pengguna[i]->getNamaPengguna() << " berteman dengan " << teman[j]->getNamaPengguna() << endl;
             }
         }
+    }
+};
 
-        cout << "dah penuhh" << endl;
+class Dasbor
+{
+private:
+    vector<Admin *> admin;
+    vector<Pengguna *> pengguna;
+    ManajerHubungan manajerHubungan;
+
+public:
+    Dasbor() {}
+
+    ~Dasbor()
+    {
+        for (int i = 0; i < admin.size(); ++i)
+        {
+            delete admin[i];
+        }
+        for (int i = 0; i < pengguna.size(); ++i)
+        {
+            delete pengguna[i];
+        }
     }
 
-    void displayUserActivities() const
+    const vector<Admin *> &getAdmin() const
     {
-        cout << "=== Aktivitas Users ===" << endl;
-        for (int i = 0; i < MAX_USERS; ++i)
+        return admin;
+    }
+
+    const vector<Pengguna *> &getPengguna() const
+    {
+        return pengguna;
+    }
+
+    void tampilkanSemuaPengguna() const
+    {
+        cout << "Semua Pengguna:" << endl;
+
+        for (int i = 0; i < admin.size(); ++i)
         {
-            if (userActivities[i] != nullptr)
+            cout << "Admin Nama Pengguna: " << admin[i]->getNamaPengguna() << " Token: " << admin[i]->getToken() << endl;
+        }
+
+        for (int i = 0; i < pengguna.size(); ++i)
+        {
+            cout << "Pengguna Nama Pengguna: " << pengguna[i]->getNamaPengguna() << " Token: " << pengguna[i]->getToken() << endl;
+        }
+    }
+
+    void tambahAdmin(Admin *adminBaru)
+    {
+        admin.push_back(adminBaru);
+    }
+
+    void tambahPengguna(Pengguna *penggunaBaru)
+    {
+        pengguna.push_back(penggunaBaru);
+        manajerHubungan.tambahPengguna(pengguna.back());
+    }
+
+    Admin *dapatkanAdminTerotentikasi() const
+    {
+        for (int i = 0; i < admin.size(); ++i)
+        {
+            if (admin[i]->sudahAutentikasi())
             {
-                cout << *(userActivities[i]) << endl;
+                return admin[i];
             }
         }
-        cout << "========================" << endl;
+        return nullptr;
+    }
+
+    void tambahPersahabatan(Pengguna &pengguna1, Pengguna &pengguna2)
+    {
+        pengguna1.tambahTeman(&pengguna2);
+        pengguna2.tambahTeman(&pengguna1);
+    }
+
+    ManajerHubungan &dapatkanManajerHubungan()
+    {
+        return manajerHubungan;
     }
 };
 
 int main()
 {
-    Dashboard dashboard;
+    srand(time(0));
+
+    Dasbor dasbor;
 
     while (true)
     {
-        cout << "MAUNYA SI FP" << endl;
-        cout << "1. login sebagai admin" << endl;
-        cout << "2. login sebagai user" << endl;
-        cout << "3. tampilkan dashboard" << endl;
-        cout << "0. keluar" << endl;
+        cout << "Pilihan:" << endl;
+        cout << "1. Registrasi sebagai Admin" << endl;
+        cout << "2. Registrasi sebagai Pengguna" << endl;
+        cout << "3. Masuk Dasbor (Hanya Admin)" << endl;
+        cout << "4. Keluar" << endl;
 
-        int choice;
-        cout << "pilihan: ";
-        cin >> choice;
+        int pilihan;
+        cout << "Pilih: ";
+        cin >> pilihan;
 
-        switch (choice)
+        switch (pilihan)
         {
         case 1:
         {
-            string username, password;
-            cout << "masukkan username admin: ";
-            cin >> username;
-            cout << "masukkan password admin: ";
-            cin >> password;
+            cout << "Masukkan Nama Pengguna Admin:" << endl;
+            string namaPenggunaAdmin;
+            cin >> namaPenggunaAdmin;
 
-            // cek pokona admin cuma 3
-            if (dashboard.isAdminLimitReached())
+            cout << "Masukkan Kata Sandi Admin:" << endl;
+            string kataSandiAdmin;
+            cin >> kataSandiAdmin;
+
+            Admin *adminBaru = new Admin();
+            adminBaru->daftarPengguna(namaPenggunaAdmin, kataSandiAdmin);
+            adminBaru->autentikasi();
+            dasbor.tambahAdmin(adminBaru);
+
+            cout << "Admin berhasil terdaftar!" << endl;
+            break;
+        }
+        case 2:
+        {
+            cout << "Masukkan Nama Pengguna:" << endl;
+            string namaPengguna;
+            cin >> namaPengguna;
+
+            cout << "Masukkan Kata Sandi:" << endl;
+            string kataSandi;
+            cin >> kataSandi;
+
+            Pengguna *penggunaBaru = new Pengguna();
+            penggunaBaru->daftarPengguna(namaPengguna, kataSandi);
+            dasbor.tambahPengguna(penggunaBaru);
+            break;
+        }
+        case 3:
+        {
+            cout << "Masukkan Nama Pengguna Admin:" << endl;
+            string namaPenggunaAdmin;
+            cin >> namaPenggunaAdmin;
+
+            cout << "Masukkan Kata Sandi Admin:" << endl;
+            string kataSandiAdmin;
+            cin >> kataSandiAdmin;
+
+            bool adminTerotentikasi = false;
+            Admin *adminTerotentikasiObj = nullptr;
+            const vector<Admin *> &adminList = dasbor.getAdmin();
+            for (int i = 0; i < adminList.size(); ++i)
             {
-                cout << "dah penuh" << endl;
+                Admin *adminBaru = adminList[i];
+                if (adminBaru->getNamaPengguna() == namaPenggunaAdmin && kataSandiAdmin == adminBaru->getKataSandi())
+                {
+                    adminTerotentikasi = true;
+                    adminTerotentikasiObj = adminBaru;
+                    cout << "Admin berhasil masuk!" << endl;
+                    break;
+                }
+            }
+
+            if (!adminTerotentikasi)
+            {
+                cout << "Masuk gagal. Periksa kembali nama pengguna dan kata sandi admin." << endl;
             }
             else
             {
-                Admin *admin = new Admin(username, password);
-                dashboard.addUser(admin);
-                cout << "admin " << username <<" berhasil ditambahkan" << endl;
+                while (true)
+                {
+                    cout << "Dasbor Admin:" << endl;
+                    cout << "1. Tampilkan semua pengguna" << endl;
+                    cout << "2. Tambahkan Teman" << endl;
+                    cout << "3. Tampilkan Teman" << endl;
+                    cout << "4. Keluar" << endl;
+
+                    int pilihanDasbor;
+                    cout << "Pilih: ";
+                    cin >> pilihanDasbor;
+
+                    switch (pilihanDasbor)
+                    {
+                    case 1:
+                    {
+                        const vector<Admin *> &adminList = dasbor.getAdmin();
+                        for (int i = 0; i < adminList.size(); ++i)
+                        {
+                            cout << "Admin Nama Pengguna: " << adminList[i]->getNamaPengguna() << " Token: " << adminList[i]->getToken() << endl;
+                        }
+
+                        const vector<Pengguna *> &penggunaList = dasbor.getPengguna();
+                        for (int i = 0; i < penggunaList.size(); ++i)
+                        {
+                            cout << "Pengguna Nama Pengguna: " << penggunaList[i]->getNamaPengguna() << " Token: " << penggunaList[i]->getToken() << endl;
+                        }
+                        break;
+                    }
+                    case 2:
+                    {
+                        string namaPenggunaTeman;
+                        cout << "Masukkan Nama Pengguna Teman:" << endl;
+                        cin >> namaPenggunaTeman;
+
+                        Pengguna *temanPengguna = nullptr;
+                        const vector<Pengguna *> &penggunaList = dasbor.getPengguna();
+                        for (int i = 0; i < penggunaList.size(); ++i)
+                        {
+                            if (penggunaList[i]->getNamaPengguna() == namaPenggunaTeman)
+                            {
+                                temanPengguna = penggunaList[i];
+                                break;
+                            }
+                        }
+
+                        if (temanPengguna != nullptr)
+                        {
+                            dasbor.tambahPersahabatan(*adminTerotentikasiObj, *temanPengguna);
+                            cout << "Teman berhasil ditambahkan!" << endl;
+                        }
+                        else
+                        {
+                            cout << "Pengguna dengan nama pengguna tersebut tidak ditemukan." << endl;
+                        }
+                        break;
+                    }
+                    case 3:
+                    {
+                        const vector<Pengguna *> &penggunaList = dasbor.getPengguna();
+                        for (int i = 0; i < penggunaList.size(); ++i)
+                        {
+                            cout << "Teman dari " << penggunaList[i]->getNamaPengguna() << ": ";
+                            const vector<Pengguna *> &teman = penggunaList[i]->getTeman();
+                            for (int j = 0; j < teman.size(); ++j)
+                            {
+                                cout << teman[j]->getNamaPengguna() << endl;
+                            }
+                        }
+                        break;
+                    }
+                    case 4:
+                        cout << "Keluar Admin." << endl;
+                        break;
+                    default:
+                        cout << "Pilihan tidak valid." << endl;
+                    }
+
+                    if (pilihanDasbor == 4)
+                    {
+                        break;
+                    }
+                }
             }
             break;
         }
-
-        case 2:
-        {
-            string username, password;
-            cout << "masukkan username user: ";
-            cin >> username;
-            cout << "masukkan password user: ";
-            cin >> password;
-
-            User *user = new User(username, password);
-            dashboard.addUser(user);
-            cout << "User " << username <<" berhasil ditambahkan" << endl;
-            break;
-        }
-
-        case 3:
-        {
-            dashboard.displayUsers();
-
-            // pilihan di dashboard
-            while (true)
-            {
-                cout << "Pilihan Dashboard:" << endl;
-                cout << "1. tambah user" << endl;
-                cout << "2. tambah kegiatan user" << endl;
-                cout << "3. tampilkan kegiatan user" << endl;
-                cout << "0. keluar dari dashboard" << endl;
-
-                int dashboardChoice;
-                cout << "pilihan: ";
-                cin >> dashboardChoice;
-
-                if (dashboardChoice == 0)
-                {
-                    break; // keluar dashboard
-                }
-
-                switch (dashboardChoice)
-                {
-                case 1:
-                {
-                    string username, password;
-                    cout << "masukkan username user: ";
-                    cin >> username;
-                    cout << "masukkan password user: ";
-                    cin >> password;
-
-                    User *user = new User(username, password);
-                    dashboard.addUser(user);
-                    cout << "user " << username <<" berhasil ditambahkan" << endl;
-                    break;
-                }
-
-                case 2:
-                {
-                    string username, activity;
-                    cout << "masukkan username user: ";
-                    cin >> username;
-                    cout << "masukkan kegiatan: ";
-                    cin.ignore(); 
-                    getline(cin, activity);
-
-                    dashboard.addActivity(username, activity);
-                    break;
-                }
-
-                case 3:
-                    dashboard.displayUserActivities();
-                    break;
-
-                default:
-                    cout << "ga bener lu" << endl;
-                    break;
-                }
-            }
-
-            break;
-        }
-
-        case 0:
-            return 0; // keluar program
-
+        case 4:
+            cout << "Program selesai." << endl;
+            return 0;
         default:
-            cout << "ga bener lu" << endl;
-            break;
+            cout << "Pilihan tidak valid." << endl;
         }
     }
 
